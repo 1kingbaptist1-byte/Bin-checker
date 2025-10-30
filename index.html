@@ -163,7 +163,7 @@
   </div>
 
   <script>
-    // FULL STATIC BIN LIST (100+ entries – NO TRUNCATION)
+    // FULL BIN LIST — NO TRUNCATION
     const staticBins = [
       {p:['430023'], network:'Visa', type:'Credit', level:'Classic', country:'US', countryCode:'USA', funding:'Credit', issuer:'Worlds Foremost Bank', brand:'Cabelas', prepaid:false, vbv:false, risk:'LOW'},
       {p:['438948'], network:'Visa', type:'Credit', level:'Gold', country:'US', countryCode:'USA', funding:'Credit', issuer:'Commerce Bancshares', brand:'Commerce Bank', prepaid:false, vbv:false, risk:'LOW'},
@@ -189,8 +189,6 @@
       {p:['541333'], network:'Mastercard', type:'Prepaid', level:'Reloadable', country:'US', countryCode:'USA', funding:'Prepaid', issuer:'Pathward (Netspend)', brand:'Netspend', prepaid:true, vbv:false, risk:'LOW'},
       {p:['601125'], network:'Discover', type:'Prepaid', level:'Gift', country:'US', countryCode:'USA', funding:'Prepaid', issuer:'Discover', brand:'Discover Gift', prepaid:true, vbv:false, risk:'LOW'},
       {p:['411111'], network:'Visa', type:'Prepaid', level:'Test', country:'US', countryCode:'USA', funding:'Prepaid', issuer:'Test Issuer', brand:'Test Card', prepaid:true, vbv:false, risk:'LOW'},
-
-      // HIGH-RISK
       {p:['480365'], network:'Visa', type:'Credit', level:'?', country:'US', countryCode:'USA', funding:'Credit', issuer:'Chase (Reported)', brand:'?', prepaid:false, vbv:false, risk:'HIGH'},
       {p:['460531'], network:'Visa', type:'Debit', level:'?', country:'US', countryCode:'USA', funding:'Debit', issuer:'Bank of America (Reported)', brand:'?', prepaid:false, vbv:false, risk:'HIGH'},
       {p:['420640'], network:'Visa', type:'Credit', level:'?', country:'US', countryCode:'USA', funding:'Credit', issuer:'Wells Fargo (Reported)', brand:'?', prepaid:false, vbv:false, risk:'HIGH'},
@@ -240,8 +238,6 @@
       {p:['473703'], network:'Visa', type:'Debit', level:'?', country:'US', countryCode:'USA', funding:'Debit', issuer:'US Bank (Reported)', brand:'?', prepaid:false, vbv:false, risk:'HIGH'},
       {p:['542432'], network:'Mastercard', type:'Credit', level:'?', country:'US', countryCode:'USA', funding:'Credit', issuer:'Capital One (Reported)', brand:'?', prepaid:false, vbv:false, risk:'HIGH'},
       {p:['414709'], network:'Visa', type:'Credit', level:'?', country:'US', countryCode:'USA', funding:'Credit', issuer:'Discover (Reported)', brand:'?', prepaid:false, vbv:false, risk:'HIGH'},
-
-      // MAJOR NETWORKS
       {p:['4'], network:'Visa', type:'Credit/Debit', level:'Various', country:'Global', countryCode:'INT', funding:'Credit/Debit', issuer:'Various Banks', brand:'Visa', prepaid:false, vbv:true, risk:'LOW'},
       {p:['51','52','53','54','55'], network:'Mastercard', type:'Credit/Debit', level:'Various', country:'Global', countryCode:'INT', funding:'Credit/Debit', issuer:'Various Banks', brand:'Mastercard', prepaid:false, vbv:true, risk:'LOW'},
       {p:['34','37'], network:'American Express', type:'Credit', level:'Various', country:'US', countryCode:'USA', funding:'Charge', issuer:'American Express', brand:'Amex', prepaid:false, vbv:true, risk:'LOW'},
@@ -252,8 +248,23 @@
       {p:['36','38','39'], network:'Diners Club', type:'Credit', level:'Premium', country:'US', countryCode:'USA', funding:'Charge', issuer:'Citibank', brand:'Diners Club', prepaid:false, vbv:true, risk:'LOW'}
     ];
 
-    const nonVbvPrefixes = new Set([...]); // (same as before – omitted for space)
-    const countryMap = { /* ... */ };
+    const nonVbvPrefixes = new Set([
+      '430023','438948','479126','410894','426429','488893','435237','432845','432630','478431',
+      '400022','401105','414512','421297','423191','446053','475757','531306','484637','511689',
+      '517800','541333','601125','411111','480365','460531','420640','462228','426750','514812',
+      '412610','424631','533224','420767','441103','414720','468005','486796','416549','439744',
+      '446238','446259','446272','446274','446278','446291','446292','448513','453261','453290',
+      '453917','453951','453981','453991','454313','454434','454638','455206','455602','459645',
+      '459646','430858','463576','497538','542418','473702','440066','549198','438857','434256',
+      '473703','542432','414709'
+    ]);
+
+    const countryMap = {
+      'USA':'United States', 'GBR':'United Kingdom', 'CAN':'Canada', 'AUS':'Australia', 'DEU':'Germany',
+      'FRA':'France', 'ITA':'Italy', 'ESP':'Spain', 'JPN':'Japan', 'CHN':'China', 'IND':'India',
+      'BRA':'Brazil', 'MEX':'Mexico', 'RUS':'Russia', 'KOR':'South Korea', 'INT':'International',
+      'IRL':'Ireland', 'HKG':'Hong Kong', 'HUN':'Hungary', 'ISL':'Iceland', 'AND':'Andorra'
+    };
 
     const priceDB = {
       '480365': { price: 8.50, trend: 'up', source: 'CardingForum X' },
@@ -270,34 +281,196 @@
     };
 
     const format = d => d.match(/.{1,4}/g)?.join(' ') || d;
-    const luhn = n => { /* ... */ };
+
+    const luhn = n => {
+      if (!/^\d{13,19}$/.test(n)) return false;
+      let s=0, d=false;
+      for (let i=n.length-1;i>=0;i--){
+        let v=+n[i];
+        if (d) {v*=2; if(v>9) v-=9;}
+        s+=v; d=!d;
+      }
+      return s%10===0;
+    };
+
     const getCountryName = code => countryMap[code] || code;
-    const staticInfo = digits => { /* ... */ };
+
+    const staticInfo = digits => {
+      if (!digits) return null;
+      for (let len=Math.min(digits.length,8);len>=1;len--){
+        const pre = digits.slice(0,len);
+        for (const e of staticBins){
+          if (Array.isArray(e.p) ? e.p.some(p=>pre.startsWith(p)) : pre.startsWith(e.p)) {
+            return {...e, bin: digits.slice(0,6), iin: digits.slice(0,8)};
+          }
+        }
+      }
+      return null;
+    };
+
     let apiTO;
-    const lookupBIN = async bin => { /* ... */ };
-    const render = async (data, valid, len, digits) => { /* ... */ };
+    const lookupBIN = async bin => {
+      try {
+        const [binlist, bincheck] = await Promise.all([
+          fetch(`https://lookup.binlist.net/${bin}`).then(r=>r.ok?r.json():null),
+          fetch(`https://api.bincodes.com/bin/?format=json&api_key=demo&bin=${bin}`).then(r=>r.ok?r.json():null)
+        ]);
+        return { binlist, bincheck };
+      } catch (e) {
+        return { binlist: null, bincheck: null };
+      }
+    };
+
+    const render = async (data, valid, len, digits) => {
+      const container = document.getElementById('resultContainer');
+      container.classList.remove('hidden');
+      container.classList.add('animate-fade-in');
+
+      const isAmex = data.network.includes('American Express');
+      const need = isAmex ? 15 : 16;
+
+      let valTxt = 'Incomplete', valCls = 'text-yellow-300';
+      if (len === need) { valTxt = valid ? 'VALID' : 'INVALID'; valCls = valid ? 'text-green-400' : 'text-red-400'; }
+      else if (len > need) { valTxt = 'Too Long'; valCls = 'text-red-400'; }
+
+      const vbvStatus = data.vbv === false ? 'Non-VBV (May Bypass 3DS)' : 'Likely Requires 3DS/VBV';
+      const vbvCls = data.vbv === false ? 'text-green-400' : 'text-red-400';
+
+      const countryName = getCountryName(data.countryCode);
+      const isHighRisk = data.risk === 'HIGH';
+
+      let priceHTML = '';
+      if (priceEnabled && digits.length >= 6) {
+        const bin = digits.slice(0,6);
+        const priceData = await fetchPrice(bin);
+        const priceCls = priceData.price === 'N/A' ? 'text-gray-400' :
+                        priceData.price < 3 ? 'price-low' :
+                        priceData.price > 10 ? 'price-high' : 'price-med';
+        const trendIcon = priceData.trend === 'up' ? 'Up' : priceData.trend === 'down' ? 'Down' : '';
+        priceHTML = `
+          <div class="mt-3 p-3 bg-white/10 rounded-lg">
+            <div class="flex justify-between items-center">
+              <span class="font-semibold">Market Price:</span>
+              <span class="${priceCls} font-bold">$${priceData.price} ${trendIcon}</span>
+            </div>
+            <div class="text-xs opacity-70 mt-1">Source: ${priceData.source} (Last 24h)</div>
+            <div class="text-xs text-orange-400 italic mt-2">
+              *For research only. No illegal use.
+            </div>
+          </div>
+        `;
+      }
+
+      const bgClass = isHighRisk ? 'bg-red-900/30 border-red-500/50 risk-high' : 'glass';
+      container.className = `p-5 ${bgClass} border rounded-xl transition duration-300 min-h-32 flex flex-col justify-center`;
+
+      container.innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div class="space-y-3">
+            <div><span class="font-semibold text-blue-300">BIN/IIN:</span> <code class="bg-white/10 px-2 py-1 rounded text-xs">${data.bin}</code></div>
+            <div><span class="font-semibold">Network:</span> ${data.network} <span class="text-xs opacity-70">(${data.type})</span></div>
+            <div><span class="font-semibold">Card Level:</span> ${data.level || 'Unknown'}</div>
+            <div><span class="font-semibold">Brand:</span> ${data.brand || 'Generic'}</div>
+            <div><span class="font-semibold">Issuer:</span> <span class="text-blue-300 font-medium">${data.issuer}</span></div>
+            <div><span class="font-semibold">Country:</span> ${countryName} <span class="text-xs opacity-70">(${data.countryCode})</span></div>
+          </div>
+          <div class="space-y-3">
+            <div><span class="font-semibold">Funding:</span> ${data.funding} ${data.prepaid ? '<span class="text-xs bg-purple-500/30 text-purple-300 px-2 py-1 rounded ml-1">Prepaid</span>' : ''}</div>
+            <div><span class="font-semibold">3DS/VBV:</span> <span class="${vbvCls}">${vbvStatus}</span></div>
+            <div><span class="font-semibold">Validation:</span> <span class="${valCls}">${valTxt}</span></div>
+            ${isHighRisk ? '<div class="text-xs font-bold text-red-400 mt-2">HIGH-RISK BIN: Reported in public forums.</div>' : ''}
+          </div>
+        </div>
+        ${priceHTML}
+        <details class="mt-5 text-xs border-t border-white/20 pt-3">
+          <summary class="cursor-pointer font-medium opacity-80">View Raw Data</summary>
+          <pre class="bg-white/5 p-3 rounded mt-2 overflow-x-auto text-xs">${JSON.stringify(data, null, 2)}</pre>
+        </details>
+      `;
+    };
 
     let digits = '';
     let priceEnabled = true;
+    const handle = async () => {
+      const raw = document.getElementById('cardNumberInput').value;
+      digits = raw.replace(/\D/g,'').substring(0,23);
+      const fmt = format(digits);
 
-    const handle = async () => { /* ... same as before ... */ };
+      const input = document.getElementById('cardNumberInput');
+      const cur = input.selectionStart;
+      const old = raw.length;
+      input.value = fmt;
+      const added = fmt.length - old;
+      let newCur = cur + added;
+      const before = fmt.substring(0, newCur);
+      const spaces = (before.match(/ /g) || []).length;
+      newCur = cur + spaces;
+      input.setSelectionRange(newCur, newCur);
 
-    document.getElementById('cardNumberInput').addEventListener('input', handle);
-    document.getElementById('cardNumberInput').addEventListener('keydown', e => {
-      if (e.key === 'Enter') { e.preventDefault(); handle(); }
+      if (digits.length < 6) {
+        document.getElementById('resultContainer').classList.add('hidden');
+        return;
+      }
+
+      const staticData = staticInfo(digits) || {
+        network:'Unknown', type:'?', level:'?', country:'?', countryCode:'?', funding:'?', issuer:'Unknown', brand:'?', prepaid:false, vbv:true, risk:'LOW'
+      };
+
+      const required = staticData.network.includes('Amex') ? 15 : 16;
+      const complete = digits.length === required;
+
+      render({
+        ...staticData,
+        bin: digits.slice(0,6),
+        iin: digits.slice(0,8)
+      }, complete && luhn(digits), digits.length, digits);
+
+      clearTimeout(apiTO);
+      apiTO = setTimeout(async () => {
+        const bin = digits.slice(0,6);
+        const { binlist, bincheck } = await lookupBIN(bin);
+
+        const final = {
+          ...staticData,
+          bin: bin,
+          iin: digits.slice(0,8),
+          network: binlist?.scheme?.toTitleCase() || bincheck?.card || staticData.network,
+          type: binlist?.type?.toTitleCase() || bincheck?.type || staticData.type,
+          level: binlist?.brand?.toTitleCase() || bincheck?.level || staticData.level,
+          brand: binlist?.brand || bincheck?.brand || staticData.brand,
+          issuer: binlist?.bank?.name || bincheck?.bank || staticData.issuer,
+          country: binlist?.country?.name || bincheck?.country || staticData.country,
+          countryCode: binlist?.country?.alpha3 || bincheck?.country_code || staticData.countryCode,
+          funding: binlist?.type?.includes('debit') ? 'Debit' : 'Credit',
+          prepaid: binlist?.prepaid || staticData.prepaid,
+          vbv: staticData.vbv,
+          risk: staticData.risk
+        };
+
+        render(final, complete && luhn(digits), digits.length, digits);
+      }, 400);
+    };
+
+    const priceToggle = document.getElementById('priceToggle');
+    priceToggle.addEventListener('click', () => {
+      priceEnabled = !priceEnabled;
+      priceToggle.textContent = priceEnabled ? 'Dollar' : 'DollarOff';
+      if (digits.length >= 6) handle();
     });
 
-    document.addEventListener('keydown', e => {
-      if (e.ctrlKey && e.key === 'e') { e.preventDefault(); document.getElementById('exportBtn').click(); }
+    const themeToggle = document.getElementById('themeToggle');
+    const html = document.documentElement;
+    const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if (isDark) html.setAttribute('data-theme', 'dark');
+    themeToggle.textContent = html.getAttribute('data-theme') === 'dark' ? 'Sun' : 'Moon';
+
+    themeToggle.addEventListener('click', () => {
+      const current = html.getAttribute('data-theme');
+      const newTheme = current === 'light' ? 'dark' : 'light';
+      html.setAttribute('data-theme', newTheme);
+      themeToggle.textContent = newTheme === 'dark' ? 'Sun' : 'Moon';
     });
 
-    document.getElementById('clearBtn').addEventListener('click', () => {
-      document.getElementById('cardNumberInput').value = '';
-      document.getElementById('resultContainer').classList.add('hidden');
-      digits = '';
-    });
-
-    // EXPORT FIXED
     document.getElementById('exportBtn').addEventListener('click', () => {
       const headers = ['BIN','Network','Type','Level','Country','Issuer','VBV','Risk'];
       const rows = staticBins.map(b => [
@@ -318,24 +491,19 @@
       URL.revokeObjectURL(url);
     });
 
-    const priceToggle = document.getElementById('priceToggle');
-    priceToggle.addEventListener('click', () => {
-      priceEnabled = !priceEnabled;
-      priceToggle.textContent = priceEnabled ? 'Dollar' : 'DollarOff';
-      if (digits.length >= 6) handle();
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      document.getElementById('cardNumberInput').value = '';
+      document.getElementById('resultContainer').classList.add('hidden');
+      digits = '';
     });
 
-    const themeToggle = document.getElementById('themeToggle');
-    const html = document.documentElement;
-    const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    if (isDark) html.setAttribute('data-theme', 'dark');
-    themeToggle.textContent = html.getAttribute('data-theme') === 'dark' ? 'Sun' : 'Moon';
+    document.getElementById('cardNumberInput').addEventListener('input', handle);
+    document.getElementById('cardNumberInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); handle(); }
+    });
 
-    themeToggle.addEventListener('click', () => {
-      const current = html.getAttribute('data-theme');
-      const newTheme = current === 'light' ? 'dark' : 'light';
-      html.setAttribute('data-theme', newTheme);
-      themeToggle.textContent = newTheme === 'dark' ? 'Sun' : 'Moon';
+    document.addEventListener('keydown', e => {
+      if (e.ctrlKey && e.key === 'e') { e.preventDefault(); document.getElementById('exportBtn').click(); }
     });
 
     String.prototype.toTitleCase = function() {
