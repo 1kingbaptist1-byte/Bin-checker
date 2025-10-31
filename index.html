@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>BIN Scanner Pro (Manual Entry)</title>
+  <title>BIN Scanner Pro</title>
 
   <!-- Tailwind CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -65,10 +65,11 @@
     .risk-high { background: rgba(239, 68, 68, 0.15) !important; border-color: #fca5a5 !important; color: #991b1b; }
     .animate-fade-in { animation: fadeIn 0.4s ease-out; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-    @media (min-width: 768px) {
-      #cardNumberInput { font-size: 1.5rem; padding: 1rem 1.5rem; }
-      .btn-primary { padding: 1rem 2rem; font-size: 1.1rem; }
-    }
+
+    .input-sm { font-size: 1.1rem; padding: 0.75rem 1rem; }
+    .input-group { display: flex; gap: 0.5rem; }
+    .input-group input { flex: 1; }
+    .input-group .slash { align-self: center; font-weight: bold; color: #64748b; }
   </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-6 relative">
@@ -78,11 +79,11 @@
       <h1 class="text-4xl md:text-5xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
         BIN Scanner Pro
       </h1>
-      <p class="text-lg opacity-90">Full Public Card Data • 100+ BINs • Export</p>
-      <p class="text-sm opacity-70 mt-2">Light Mode • Mobile & PC</p>
+      <p class="text-lg opacity-90">Full Public Card Data • 100+ BINs • Export • Expiry/CVV/Name</p>
     </div>
 
     <div class="space-y-8">
+      <!-- Card Number -->
       <div>
         <label class="block text-lg font-semibold mb-3 opacity-90">Card Number or BIN</label>
         <input type="text" id="cardNumberInput" maxlength="23"
@@ -91,17 +92,43 @@
                autocomplete="off">
       </div>
 
+      <!-- Expiry + CVV -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label class="block text-lg font-semibold mb-3 opacity-90">Expiry Date (MM/YY)</label>
+          <div class="input-group">
+            <input type="text" id="expiryInput" maxlength="5" placeholder="MM/YY"
+                   class="input-sm w-full bg-white/80 backdrop-blur border border-gray-300 rounded-xl focus:ring-4 focus:ring-blue-500/50 focus:border-blue-500">
+            <span class="slash">/</span>
+          </div>
+        </div>
+        <div>
+          <label class="block text-lg font-semibold mb-3 opacity-90">CVV</label>
+          <input type="text" id="cvvInput" maxlength="4" placeholder="123"
+                 class="input-sm w-full bg-white/80 backdrop-blur border border-gray-300 rounded-xl focus:ring-4 focus:ring-blue-500/50 focus:border-blue-500">
+        </div>
+      </div>
+
+      <!-- Cardholder Name -->
+      <div>
+        <label class="block text-lg font-semibold mb-3 opacity-90">Cardholder Name (optional)</label>
+        <input type="text" id="nameInput" placeholder="John Doe"
+               class="w-full px-6 py-4 bg-white/80 backdrop-blur border border-gray-300 rounded-xl focus:ring-4 focus:ring-blue-500/50 focus:border-blue-500 text-lg transition duration-300 placeholder-gray-500">
+      </div>
+
+      <!-- Buttons -->
       <div class="flex flex-col md:flex-row gap-4">
         <button id="exportBtn" class="btn-primary flex-1 text-center">
           Export All 100+ BINs to CSV
         </button>
         <button id="clearBtn" class="btn-primary flex-1 btn-clear text-center">
-          Clear
+          Clear All
         </button>
       </div>
 
+      <!-- Results -->
       <div id="resultContainer" class="glass p-6 rounded-xl min-h-40 hidden text-sm">
-        <!-- Results -->
+        <!-- Filled by JS -->
       </div>
     </div>
 
@@ -112,7 +139,7 @@
   </div>
 
   <script>
-    // ================== FULL 100+ BIN DATABASE ==================
+    // ================== FULL 100+ BIN DATABASE (same as before) ==================
     const staticBins = [
       {p:['430023'], network:'Visa', type:'Credit', level:'Classic', country:'US', countryCode:'USA', funding:'Credit', issuer:'Worlds Foremost Bank', brand:'Cabelas', prepaid:false, vbv:false, risk:'LOW'},
       {p:['438948'], network:'Visa', type:'Credit', level:'Gold', country:'US', countryCode:'USA', funding:'Credit', issuer:'Commerce Bancshares', brand:'Commerce Bank', prepaid:false, vbv:false, risk:'LOW'},
@@ -205,7 +232,6 @@
     };
 
     const format = d => d.match(/.{1,4}/g)?.join(' ') || d;
-
     const luhn = n => {
       if (!/^\d{13,19}$/.test(n)) return false;
       let s = 0, d = false;
@@ -216,7 +242,6 @@
       }
       return s % 10 === 0;
     };
-
     const getCountryName = code => countryMap[code] || code;
 
     const staticInfo = digits => {
@@ -244,6 +269,21 @@
       } catch { return { binlist: null, bincodes: null, bincheck: null }; }
     };
 
+    // === NEW: Format Expiry MM/YY ===
+    document.getElementById('expiryInput').addEventListener('input', e => {
+      let v = e.target.value.replace(/\D/g, '').substring(0, 4);
+      if (v.length >= 2) v = v.substring(0, 2) + '/' + v.substring(2);
+      e.target.value = v;
+    });
+
+    // === NEW: Limit CVV to 3 or 4 digits (Amex = 4) ===
+    document.getElementById('cvvInput').addEventListener('input', e => {
+      const digits = document.getElementById('cardNumberInput').value.replace(/\D/g, '');
+      const isAmex = staticInfo(digits)?.network?.includes('American Express');
+      const max = isAmex ? 4 : 3;
+      e.target.value = e.target.value.replace(/\D/g, '').substring(0, max);
+    });
+
     const render = async (data, valid, len, digits) => {
       const container = document.getElementById('resultContainer');
       container.classList.remove('hidden');
@@ -264,6 +304,11 @@
       const bgClass = isHighRisk ? 'bg-red-50 border-red-300 risk-high' : 'glass';
       container.className = `p-5 ${bgClass} border rounded-xl transition duration-300 min-h-32 flex flex-col justify-center`;
 
+      // Read optional fields
+      const expiry = document.getElementById('expiryInput').value.trim();
+      const cvv = document.getElementById('cvvInput').value.trim();
+      const name = document.getElementById('nameInput').value.trim();
+
       container.innerHTML = `
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
           <div class="space-y-3">
@@ -278,6 +323,9 @@
             <div><span class="font-semibold text-gray-700">Funding:</span> ${data.funding || 'Unknown'} ${data.prepaid ? '<span class="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded ml-1">Prepaid</span>' : ''}</div>
             <div><span class="font-semibold text-gray-700">3DS/VBV:</span> <span class="${vbvCls}">${vbvStatus}</span></div>
             <div><span class="font-semibold text-gray-700">Luhn Check:</span> <span class="${valCls}">${valTxt}</span> (${len}/${need} digits)</div>
+            ${expiry ? `<div><span class="font-semibold text-gray-700">Expiry:</span> <span class="text-green-600">${expiry}</span></div>` : ''}
+            ${cvv ? `<div><span class="font-semibold text-gray-700">CVV:</span> <span class="text-green-600">${cvv}</span></div>` : ''}
+            ${name ? `<div><span class="font-semibold text-gray-700">Name:</span> <span class="text-green-600">${name}</span></div>` : ''}
             ${data.latitude ? `<div><span class="font-semibold text-gray-700">Lat/Lng:</span> ${data.latitude}, ${data.longitude}</div>` : ''}
             ${data.website ? `<div><span class="font-semibold text-gray-700">Bank Site:</span> <a href="${data.website}" target="_blank" class="text-blue-600 underline text-xs">${data.website}</a></div>` : ''}
             ${isHighRisk ? '<div class="text-xs font-bold text-red-700 mt-2">HIGH-RISK BIN: Known in public lists</div>' : ''}
@@ -344,14 +392,24 @@
       }, 500);
     };
 
-    // ================== EVENT LISTENERS ==================
+    // === EVENT LISTENERS ===
     document.getElementById('cardNumberInput').addEventListener('input', handle);
     document.getElementById('cardNumberInput').addEventListener('keydown', e => {
       if (e.key === 'Enter') { e.preventDefault(); handle(); }
     });
 
+    // Optional: trigger on expiry/CVV/name change
+    ['expiryInput', 'cvvInput', 'nameInput'].forEach(id => {
+      document.getElementById(id).addEventListener('input', () => {
+        if (digits.length >= 6) handle(); // refresh result to show new fields
+      });
+    });
+
     document.getElementById('clearBtn').addEventListener('click', () => {
       document.getElementById('cardNumberInput').value = '';
+      document.getElementById('expiryInput').value = '';
+      document.getElementById('cvvInput').value = '';
+      document.getElementById('nameInput').value = '';
       document.getElementById('resultContainer').classList.add('hidden');
       digits = '';
     });
@@ -380,7 +438,7 @@
       if (e.ctrlKey && e.key === 'e') { e.preventDefault(); document.getElementById('exportBtn').click(); }
     });
 
-    // Auto-focus the input on load
+    // Auto-focus card number
     document.getElementById('cardNumberInput').focus();
   </script>
 </body>
