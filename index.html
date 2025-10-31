@@ -5,10 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>BIN Scanner Pro</title>
+  <title>BIN Scanner Pro (Manual Entry)</title>
+
+  <!-- Tailwind CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>Card</text></svg>">
+
   <style>
     :root {
       --bg-gradient: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #dbeafe 100%);
@@ -56,37 +59,15 @@
       cursor: pointer;
       min-width: 160px;
     }
-    .btn-primary:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 25px rgba(59,130,246,0.4);
-    }
-    .btn-clear {
-      background: #ef4444;
-    }
-    .btn-clear:hover {
-      background: #dc2626;
-    }
-    .risk-high {
-      background: rgba(239, 68, 68, 0.15) !important;
-      border-color: #fca5a5 !important;
-      color: #991b1b;
-    }
-    .animate-fade-in {
-      animation: fadeIn 0.4s ease-out;
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(59,130,246,0.4); }
+    .btn-clear { background: #ef4444; }
+    .btn-clear:hover { background: #dc2626; }
+    .risk-high { background: rgba(239, 68, 68, 0.15) !important; border-color: #fca5a5 !important; color: #991b1b; }
+    .animate-fade-in { animation: fadeIn 0.4s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     @media (min-width: 768px) {
-      #cardNumberInput {
-        font-size: 1.5rem;
-        padding: 1rem 1.5rem;
-      }
-      .btn-primary {
-        padding: 1rem 2rem;
-        font-size: 1.1rem;
-      }
+      #cardNumberInput { font-size: 1.5rem; padding: 1rem 1.5rem; }
+      .btn-primary { padding: 1rem 2rem; font-size: 1.1rem; }
     }
   </style>
 </head>
@@ -131,7 +112,7 @@
   </div>
 
   <script>
-    // FULL 100+ BIN DATABASE — EVERY SINGLE ONE INCLUDED
+    // ================== FULL 100+ BIN DATABASE ==================
     const staticBins = [
       {p:['430023'], network:'Visa', type:'Credit', level:'Classic', country:'US', countryCode:'USA', funding:'Credit', issuer:'Worlds Foremost Bank', brand:'Cabelas', prepaid:false, vbv:false, risk:'LOW'},
       {p:['438948'], network:'Visa', type:'Credit', level:'Gold', country:'US', countryCode:'USA', funding:'Credit', issuer:'Commerce Bancshares', brand:'Commerce Bank', prepaid:false, vbv:false, risk:'LOW'},
@@ -260,9 +241,7 @@
           fetch(`https://api.bincheck.io/v3/bin/${bin}`).then(r => r.ok ? r.json() : null).catch(() => null)
         ]);
         return { binlist, bincodes, bincheck };
-      } catch {
-        return { binlist: null, bincodes: null, bincheck: null };
-      }
+      } catch { return { binlist: null, bincodes: null, bincheck: null }; }
     };
 
     const render = async (data, valid, len, digits) => {
@@ -365,13 +344,10 @@
       }, 500);
     };
 
+    // ================== EVENT LISTENERS ==================
     document.getElementById('cardNumberInput').addEventListener('input', handle);
     document.getElementById('cardNumberInput').addEventListener('keydown', e => {
       if (e.key === 'Enter') { e.preventDefault(); handle(); }
-    });
-
-    document.addEventListener('keydown', e => {
-      if (e.ctrlKey && e.key === 'e') { e.preventDefault(); document.getElementById('exportBtn').click(); }
     });
 
     document.getElementById('clearBtn').addEventListener('click', () => {
@@ -400,11 +376,12 @@
       URL.revokeObjectURL(url);
     });
 
-    String.prototype.toTitleCase = function() {
-      return this.replace(/\w\S*/g, txt => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
-    };
+    document.addEventListener('keydown', e => {
+      if (e.ctrlKey && e.key === 'e') { e.preventDefault(); document.getElementById('exportBtn').click(); }
+    });
 
-    handle();
+    // Auto-focus the input on load
+    document.getElementById('cardNumberInput').focus();
   </script>
 </body>
 </html>
